@@ -6,7 +6,7 @@ import java.net.*;
 public class Server {
         public static void main(String[] args) throws IOException
         {
-            int port = Integer.parseInt(args[0]);
+            int port = args.length > 0 ? Integer.parseInt(args[0]) : 5058;
             ServerSocket ss = new ServerSocket(port);
             while(true)
             {
@@ -52,7 +52,7 @@ public class Server {
                 try {
                     received = clin.readUTF();
                     System.out.println(received);
-                    if(received.equals("Bye")) 
+                    if(received.equalsIgnoreCase("Bye")) 
                 {  
                     System.out.println("Client " + this.s + " sends exit..."); 
                     System.out.println("Closing this connection."); 
@@ -60,6 +60,12 @@ public class Server {
                     System.out.println("Connection closed"); 
                     break; 
                 } 
+                } catch (SocketException e) {
+                System.out.println("Client " + this.s + " disconnected abruptly (SocketException).");
+                break; // Exit the loop when the client disconnects unexpectedly
+                } catch (EOFException e) {
+                    System.out.println("Client " + this.s + " disconnected abruptly.");
+                    break; // Exit the loop when the client disconnects
                 } catch (IOException e) { 
                     e.printStackTrace(); 
                 } 

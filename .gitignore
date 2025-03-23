@@ -88,5 +88,4 @@ nb-configuration.xml
 ## Miscellaneous
 ##############################
 *.log
-multisrv/target/classes/com/multisrv/ClientHandler.class
-multisrv/target/classes/com/multisrv/Server.class
+
