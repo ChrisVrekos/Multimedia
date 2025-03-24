@@ -2,6 +2,7 @@ package com.multisrv;
 
 import java.io.*;
 import java.net.*;
+import java.util.ArrayList;
 
 public class Server {
     public static void main(String[] args) throws IOException {
@@ -40,9 +41,46 @@ public class Server {
             System.out.println("The 'videos' folder does not exist or is not a directory in path : \n " + path);
             System.exit(1);
         }
+
+        ArrayList < String > videoFiles = new ArrayList < > ();
+        ArrayList < String > formats = new ArrayList < > ();
+        formats.add("mp4");
+        formats.add("wav");
+        formats.add("avi");
+        ArrayList < String > qualitys = new ArrayList < > ();
+        qualitys.add("144p");
+        qualitys.add("240p");
+        qualitys.add("360p");
+        qualitys.add("480p");
+        qualitys.add("720p");
+        qualitys.add("1080p");
+        for (String file: files) {
+            int lastDash = file.lastIndexOf("-");
+            if (lastDash != -1) { 
+                videoFiles.add(file.substring(0, lastDash)); 
+            }            }
+            for (String file: files) {
+            for (String format: formats) {
+                for (String quality: qualitys) {
+                    if (!file.contains(format) && !file.contains(quality)) {
+                        System.out.println("--------------The file combo " + file.split("-")[0] + "-" + quality + "." + format + " does not exist in the videos folder");
+                    }
+                    else if (file.contains(format) && file.contains(quality)) {
+                        System.out.println("The file combo " + file + " exists in the videos folder++++++++++++++");
+                }
+                else if (file.contains(format) && !file.contains(quality)) {
+                    System.out.println("--------------The file combo " + file.split("-")[0] + "-" + quality + "." + format + " does not exist in the videos folder");
+                }
+                else if (!file.contains(format) && file.contains(quality)) {
+                    System.out.println("--------------The file combo " + file.split("-")[0] + "-" + quality + "." + format + " does not exist in the videos folder");
+            }
+            }
+            }
+        }
+
         System.out.println("Files in the videos folder: ");
-        for (String file : files) {
-            System.out.println(file);
+        for (String video : videoFiles) {
+            System.out.println(video);
         }
         System.out.println("Server started successfully");        
     }
