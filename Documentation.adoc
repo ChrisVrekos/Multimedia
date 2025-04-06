@@ -1,0 +1,192 @@
+= Εργασια Multimedia Streaming
+:doctype: book
+:icons: font
+:source-highlighter: pygments
+:pygments-style: manni
+:pygments-linenums-mode: inline
+:toc: left
+:toc-title: Πίνακας περιεχομένων
+:toclevels: 4
+:sectlinks:
+:sectanchors:
+:pdf-style: basic
+:pdf-fontsdir: fonts/
+:pdf-stylesdir: styles/
+
+== Aρχιτεκτονική του Συστήματος
+
+1. *Περιγραφή του συστήματος και των λειτουργιών του:*
+   * Το σύστημα αποτελείται από δύο κύριες εφαρμογές οι οποιες χωριζονται σε 4-5 κλασεις ωστε ο κωδικας να ειναι πιο ορανομενος και κατανοητος:
+
+=== Streaming Server:
+
+       - *Διαχειρίζεται μια λίστα των διαθέσιμων αρχείων βίντεο. (VideoManager.class)*
+       - *Ελέγχει αν υπάρχουν όλες οι απαιτούμενες μετατροπές (σε διαφορετικές αναλύσεις και μορφές) για κάθε βίντεο και, εάν υπάρχουν κενά, ενεργοποιεί τη μετατροπή τους μέσω του FFmpeg.  (VideoManager.class)*
+       - *Επικοινωνεί με τον πελάτη (Client) μέσω Java Sockets, αποστέλλοντας τις πληροφορίες των αρχείων και ξεκινώντας τη ροή του βίντεο. (ClientHandler.class)*
+
+=== Streaming Client:
+
+       - *Συνδέεται με τον Streaming Server για να λαμβάνει τη λίστα των διαθέσιμων βίντεο.*
+       - *Επιτρέπει στον χρήστη να επιλέξει το επιθυμητό βίντεο και το πρωτόκολλο μετάδοσης.*
+       - *Με βάση τη σύνδεση (και ενδεχομένως με χρήση βιβλιοθήκης για ταχύτητα σύνδεσης) προσαρμόζει την ποιότητα του βίντεο που θα παραληφθεί.*
+       - *Στην τρέχουσα έκδοση η διεπαφή είναι γραμμής εντολών, όμως στις επεκτάσεις μπορεί να υλοποιηθεί γραφικό περιβάλλον (GUI).*
+
+=== *Παρουσίαση του τελικού υλοποιημένου συστήματος:*
+   - *Επικοινωνία Client-Server μέσω Java Sockets, με δυνατότητα εξυπηρέτησης πολλαπλών πελατών ταυτόχρονα (multi-threading).*
+   - *Αυτόματη αναγνώριση των αρχείων βίντεο στον κατάλογο και ανάλυση/μετατροπή τους σε διαφορετικές αναλύσεις και μορφές με χρήση FFmpeg (μέσω του Jaffree).*
+   - *Καταγραφή σημαντικών γεγονότων και λαθών κατά τη διαδικασία μετατροπής (μέσω καταγραφής στο console, με προτάσεις για μελλοντική ενσωμάτωση Logger).*
+   - *Σενάρια εκτέλεσης που περιλαμβάνουν:*
+       * *Την εκκίνηση του Server και τη λήψη του αρχικού μηνύματος συστήματος.*
+       * *Την επικοινωνία του Client για την αίτηση λίστας βίντεο και την λήψη των σχετικών πληροφοριών.*
+       * *Παραδείγματα εκτέλεσης όπου ο χρήστης πληκτρολογεί εντολές LIST, GET κλπ.*
+
+=== *Παρουσίαση των προβλημάτων που αντιμετωπίσατε και πώς αυτά επιλύθηκαν (ή έμειναν ανοικτά):*
+   - *Διαχείριση ταυτόχρονων προσβάσεων κατά την εκτέλεση μετατροπών βίντεο: Εφαρμόστηκε σύστημα κλειδώματος αρχείων (File Lock) για αποφυγή διπλών ενεργειών.*
+   - *Επικοινωνία Client-Server: Αρχικά προέκυψαν ζητήματα στην σύνδεση και στην ομαλή διαχείριση πολλαπλών συνδέσεων, για τα οποία εφαρμοστεί multi-threading και χρήση shutdown hook για ομαλή διακοπή.*
+   - *Ορισμένες λειτουργίες (όπως η δυναμική αλλαγή ποιότητας με βάση το bandwidth και η ενσωμάτωση GUI) παραμένουν σε στάδιο μελλοντικής ανάπτυξης.*
+
+==== *Βελτίωση της λειτουργίας απελευθέρωσης κλειδώματος:*
+   - *Πριν την υλοποίηση της βοηθητικής κλάσης (LockWithChannel), παρατηρήθηκε ότι κάποια αρχεία κλειδώματος δεν διαγράφονταν μετά την επιτυχή δημιουργία του βίντεο. Αν προέκυπτε οποιοδήποτε σφάλμα ή αν το αρχείο είχε καταλήξει σε ασυνεπή κατάσταση, παρέμενε στον κατάλογο, εμποδίζοντας νέες μετατροπές.* 
++
+[source,java]
+----
+private static class LockWithChannel {
+        final FileLock lock;
+        final FileChannel channel;
+        final RandomAccessFile raf;
+
+        public LockWithChannel(FileLock lock, FileChannel channel, RandomAccessFile raf) {
+            this.lock = lock;
+            this.channel = channel;
+            this.raf = raf;
+        }
+    }
+----
+   - *Με τη δημιουργία της βοηθητικής κλάσης και τον έλεγχο μεταβλητών: Δημιουργήθηκε η κλάση **LockWithChannel** που αποθηκεύει το FileLock, το FileChannel και το RandomAccessFile που προκύπτουν κατά την απόκτηση του κλειδώματος. Όλες οι μεταβλητές ελέγχονται εντός try-catch block, ώστε σε περίπτωση εξαιρέσεων να εξασφαλίζεται ο σωστός τερματισμός (απελευθέρωση πόρων και κλείσιμο Streams).* 
++
+[source,java]
+----
+private void releaseLock(String videoName, String quality, String format) {
+        String lockKey = videoName + "-" + quality + "." + format;
+        LockWithChannel lockWithChannel = activeLocks.remove(lockKey);
+        File videoDir = getVideoDirectory();
+        File lockFile = new File(videoDir, lockKey + ".lock");
+        
+        try {
+            if (lockWithChannel != null) {
+                // Release lock if valid
+                try {
+                    if (lockWithChannel.lock != null && lockWithChannel.lock.isValid()) {
+                        lockWithChannel.lock.release();
+                        System.out.println("Lock released for: " + lockKey);
+                    }
+                } catch (Exception e) {
+                    System.err.println("Error releasing file lock: " + e);
+                }
+                // Close channel
+                try {
+                    if (lockWithChannel.channel != null && lockWithChannel.channel.isOpen()) {
+                        lockWithChannel.channel.close();
+                    }
+                } catch (Exception e) {
+                    System.err.println("Error closing channel: " + e);
+                }
+                // Close RandomAccessFile
+                try {
+                    if (lockWithChannel.raf != null) {
+                        lockWithChannel.raf.close();
+                    }
+                } catch (Exception e) {
+                    System.err.println("Error closing random access file: " + e);
+                }
+            }
+            
+            // Delete the lock file
+            if (lockFile.exists()) {
+                if (!lockFile.delete()) {
+                    System.err.println("Warning: Failed to delete lock file: " + lockFile.getAbsolutePath());
+                    lockFile.deleteOnExit();
+                } else {
+                    System.out.println("Lock file deleted: " + lockFile.getName());
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error during lock release for " + lockKey + ": " + e);
+            e.printStackTrace();
+            if (lockFile.exists()) {
+                lockFile.deleteOnExit();
+            }
+        }
+    }
+
+----
+   - *Συνοπτικά, ο ενιαίος έλεγχος μέσα σε try-catch διασφαλίζει ότι κάθε στοιχείο της βοηθητικής κλάσης είναι σωστά ελεγχόμενο και απελευθερωμένο, διορθώνοντας τα αρχικά σφάλματα διαχείρισης πόρων.*
+
+== Συνοψίζοντας
+* *Το σύστημα υλοποιεί τις βασικές απαιτήσεις του έργου αλλά αφήνει περιθώρια για επεκτάσεις, όπως:*
+  * *την υποστήριξη διαφορετικών πρωτοκόλλων μετάδοσης (UDP, TCP, RTP/UDP),*
+  * *την υλοποίηση γραφικού περιβάλλοντος, και*
+  * *την ενσωμάτωση συστήματος κρυπτογράφησης για ασφαλή επικοινωνία.*
+
+=== Παραδείγματα υλοποίησης:
+
+1. **Παράδειγμα εκκίνησης του Server:**
+   _"Server running on port 5058"_
+   _Υλοποιείται ως εξής:_
++
+[source,java]
+----
+   System.out.println("Server running on port " + port);
+----
+
+2. **Παράδειγμα διαχείρισης πολλαπλών συνδέσεων:**
+   _Χρήση του AtomicInteger:_
++
+[source,java]
+----
+ private static void handleNewConnection(Socket clientSocket) {
+        try {
+            System.out.println("New client connected: " + clientSocket);
+            activeConnections.incrementAndGet();
+            
+            // Create streams
+            DataInputStream input = new DataInputStream(clientSocket.getInputStream());
+            DataOutputStream output = new DataOutputStream(clientSocket.getOutputStream());
+            
+            // Submit to thread pool the last argument is unnamed class dissconnectCallabck that impliments 
+            //Runnable so when the client disconnects the disconnectCallback.run() is called and the 
+            //below code is executed line 65-66
+            clientPool.submit(new ClientHandler(clientSocket, input, output, videoManager, () -> {
+                activeConnections.decrementAndGet();
+                System.out.println("Client disconnected. Active connections: " + activeConnections.get());
+            }));
+            
+        } catch (IOException e) {
+            System.err.println("Error handling connection: " + e.getMessage());
+            activeConnections.decrementAndGet();
+        }
+    }
+
+----
+
+3. **Παράδειγμα χρήσης του File Lock στην μετατροπή βίντεο:**
++
+[source,java]
+----
+   if (!acquireLock(videoName, targetQuality, targetFormat)) {
+       System.out.println("Conversion already in progress by another instance: " + videoName + "-" + targetQuality + "." + targetFormat);
+       return;
+   }
+----
+
+4. **Παράδειγμα επεξεργασίας εντολών από τον Client:**
++
+[source,java]
+----
+   if (command.startsWith("LIST")) {
+       return videoManager.getVideoList();
+   } else if (command.startsWith("GET ")) {
+       String videoName = command.substring(4);
+       return videoManager.getVideoInfo(videoName);
+   }
+----

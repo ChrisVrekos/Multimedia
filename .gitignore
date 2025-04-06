@@ -88,4 +88,7 @@ nb-configuration.xml
 ## Miscellaneous
 ##############################
 *.log
+videos\*
+multisrv\src\main\java\com\multisrv\videos\*
+multisrv/src/main/java/com/multisrv/videos/*
 
