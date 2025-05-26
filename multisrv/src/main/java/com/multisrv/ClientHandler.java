@@ -61,12 +61,32 @@ public class ClientHandler implements Runnable {
     
     private String processCommand(String command) {
         // Here you can add proper command handling
-        // For example: list videos, get video info, etc.
         if (command.startsWith("LIST")) {
             return videoManager.getVideoList();
         } else if (command.startsWith("GET ")) {
             String videoName = command.substring(4);
             return videoManager.getVideoInfo(videoName);
+        } else if (command.startsWith("PLAY")) {
+            // Parse video name and protocol
+            String requestParams = command.substring(5).trim();
+            String videoName;
+            String protocol = "UDP"; // Default protocol
+            
+            // Check if protocol is specified
+            if (requestParams.contains("PROTOCOL=")) {
+                // Extract protocol
+                int protocolIndex = requestParams.indexOf("PROTOCOL=");
+                String protocolParam = requestParams.substring(protocolIndex + 9);
+                protocol = protocolParam.trim();
+                
+                // Extract video name (everything before PROTOCOL=, trimmed)
+                videoName = requestParams.substring(0, protocolIndex).trim();
+            } else {
+                videoName = requestParams;
+            }
+            
+            System.out.println("Requested video: " + videoName + " with protocol: " + protocol);
+            return videoManager.playVideo(videoName, protocol);
         }
         
         return "Unknown command";
