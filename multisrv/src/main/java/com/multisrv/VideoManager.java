@@ -905,19 +905,23 @@ public class VideoManager {
         command.add("-force_key_frames");
         command.add("expr:gte(t,0)");
         
-        // Use simpler encoding with proper headers
+        // MATCH TCP QUALITY SETTINGS
         command.add("-c:v");
         command.add("libx264");
         command.add("-preset");
-        command.add("ultrafast");
+        command.add("veryfast");  // Changed from ultrafast to match TCP
+        command.add("-crf");
+        command.add("23");        // Added CRF setting from TCP
+        command.add("-b:v");
+        command.add("3000k");     // Added bitrate setting from TCP
         
-        // CRITICAL: Add bitstream filter for proper H.264 headers
+        // Keep the UDP-specific settings for proper headers
         command.add("-bsf:v");
         command.add("h264_mp4toannexb");
         
-        // CRITICAL: Add parameter set inclusion flag
-        command.add("-movflags");
-        command.add("+export_mvs+faststart");
+        // Add GOP (Group of Pictures) setting for better streaming
+        command.add("-g");
+        command.add("30");        // Keyframe every 30 frames
         
         // Audio settings
         command.add("-c:a");
@@ -925,10 +929,10 @@ public class VideoManager {
         command.add("-b:a");
         command.add("128k");
         
-        // Format and output with better UDP parameters
+        // Format settings with better UDP parameters
         command.add("-f");
         command.add("mpegts");
-        command.add("udp://127.0.0.1:" + port);
+        command.add("udp://127.0.0.1:" + port + "?pkt_size=1316&buffer_size=6553600");
         
         String cmdStr = String.join(" ", command);
         
@@ -938,8 +942,8 @@ public class VideoManager {
             activeProcesses.put("UDP-" + port, process);
             
             // Give FFmpeg time to start sending data
-            Thread.sleep(1000);
-        } catch (IOException | InterruptedException e) {
+            //Thread.sleep(1000);
+        } catch (IOException e) {
             logger.error("Error starting UDP stream: {}", e.getMessage());
         }
     }
@@ -948,49 +952,103 @@ public class VideoManager {
      * Simplified RTP streaming process
      */
     private void startRTPStreamProcess(File videoFile, int streamPort) throws IOException {
-        // Create SDP file path
         File sdpFile = new File(videoFile.getParentFile(), "stream_" + streamPort + ".sdp");
         
-        // Build FFmpeg command with proper RTP settings
+        // Delete existing SDP file if it exists
+        if (sdpFile.exists()) {
+            sdpFile.delete();
+        }
+        
+        int videoPort = streamPort;
+        int audioPort = streamPort + 2; // Separate ports for audio/video
+        
         List<String> command = new ArrayList<>();
         command.add("ffmpeg");
         command.add("-re");
         command.add("-i");
         command.add(videoFile.getAbsolutePath());
-        command.add("-an");
+        
+        // Video settings
         command.add("-c:v");
-        command.add("libx264");  // Use libx264 instead of copy for better compatibility
+        command.add("libx264");
+        command.add("-profile:v");
+        command.add("baseline");
         command.add("-preset");
         command.add("ultrafast");
-        command.add("-tune"); 
+        command.add("-tune");
         command.add("zerolatency");
+        command.add("-force_key_frames");
+        command.add("expr:gte(t,0)");
+        
+        // Audio settings
+        command.add("-c:a");
+        command.add("aac");
+        command.add("-ar");
+        command.add("44100");
+        command.add("-ac");
+        command.add("2");
+        command.add("-b:a");
+        command.add("96k");
+        
+        // CRITICAL: Use standard RTP format with separate outputs for video and audio
         command.add("-f");
         command.add("rtp");
         command.add("-sdp_file");
         command.add(sdpFile.getAbsolutePath());
-        command.add("rtp://127.0.0.1:" + streamPort);
+        
+        // Output video stream
+        command.add("-map");
+        command.add("0:v:0");
+        command.add("rtp://127.0.0.1:" + videoPort + "?rtpflags=latm");
+        
+        // Output audio stream (if available)
+        command.add("-map");
+        command.add("0:a:0?");
+        command.add("-f");
+        command.add("rtp");
+        command.add("rtp://127.0.0.1:" + audioPort + "?rtpflags=latm");
         
         logger.info("Starting RTP FFmpeg stream: {}", String.join(" ", command));
-        Process process = new ProcessBuilder(command).redirectErrorStream(true).start();
+        ProcessBuilder pb = new ProcessBuilder(command);
+        pb.redirectErrorStream(true);
+        Process process = pb.start();
         activeProcesses.put("RTP-" + streamPort, process);
         
-        // Make sure the SDP file is created before continuing
-        int attempts = 0;
-        while (!sdpFile.exists() && attempts < 10) {
+        // Capture and log the output for debugging
+        BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+        new Thread(() -> {
             try {
-                Thread.sleep(300);
-            } catch (InterruptedException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    logger.info("FFmpeg RTP: {}", line);
+                }
+            } catch (IOException e) {
+                logger.error("Error reading FFmpeg output: {}", e.getMessage());
             }
-            attempts++;
+        }).start();
+        
+        // Wait longer for SDP file to be created
+        int attempts = 0;
+        int maxAttempts = 20;  // Increased from 10 to 20
+        int sleepTime = 300;   // Milliseconds
+        
+        while (!sdpFile.exists() && attempts < maxAttempts) {
+            try {
+                Thread.sleep(sleepTime);
+                logger.info("Waiting for SDP file, attempt {}/{}", attempts+1, maxAttempts);
+                attempts++;
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         }
         
         // Save SDP content for client response if available
         if (sdpFile.exists()) {
             this.lastGeneratedSdpContent = new String(java.nio.file.Files.readAllBytes(sdpFile.toPath()));
+            logger.info("SDP file created successfully: {}", sdpFile.getPath());
         } else {
-            logger.error("SDP file not created: {}", sdpFile.getAbsolutePath());
+            logger.error("SDP file not created after {} attempts: {}", maxAttempts, sdpFile.getAbsolutePath());
+            throw new IOException("Failed to create SDP file for RTP stream");
         }
     }
 

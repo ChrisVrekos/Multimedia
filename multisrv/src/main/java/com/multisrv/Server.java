@@ -4,6 +4,8 @@ import java.io.*;
 import java.net.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 // Add these missing imports
 
 
@@ -13,6 +15,8 @@ public class Server {
     private static final ExecutorService clientPool = Executors.newCachedThreadPool();
     private static final AtomicInteger activeConnections = new AtomicInteger(0);
     private static final VideoManager videoManager = new VideoManager();
+    private static final Logger logger = LoggerFactory.getLogger(Server.class);
+
     
     public static void main(String[] args) {
         int port = args.length > 0 ? Integer.parseInt(args[0]) : DEFAULT_PORT;
@@ -21,7 +25,7 @@ public class Server {
         registerShutdownHook();
         
         try (ServerSocket serverSocket = new ServerSocket(port)) {
-            System.out.println("Server running on port " + port);
+            logger.info("Server running on port " + port);
             
             // Initialize video manager
             videoManager.initialize();
@@ -39,20 +43,20 @@ public class Server {
                     Socket clientSocket = serverSocket.accept();
                     handleNewConnection(clientSocket);
                 } catch (IOException e) {
-                    System.err.println("Error accepting connection: " + e.getMessage());
+                    logger.error("Error accepting connection: " + e.getMessage());
                 }
             }
         } catch (IOException e) {
-            System.err.println("Server error: " + e.getMessage());
+            logger.error("Server error: " + e.getMessage());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            System.err.println("Server interrupted");
+            logger.error("Server interrupted");
         }
     }
     
     private static void handleNewConnection(Socket clientSocket) {
         try {
-            System.out.println("New client connected: " + clientSocket);
+            logger.info("New client connected: " + clientSocket);
             activeConnections.incrementAndGet();
             
             // Create streams
@@ -64,18 +68,18 @@ public class Server {
             //below code is executed line 65-66
             clientPool.submit(new ClientHandler(clientSocket, input, output, videoManager, () -> {
                 activeConnections.decrementAndGet();
-                System.out.println("Client disconnected. Active connections: " + activeConnections.get());
+                logger.info("Client disconnected. Active connections: " + activeConnections.get());
             }));
             
         } catch (IOException e) {
-            System.err.println("Error handling connection: " + e.getMessage());
+            logger.error("Error handling connection: " + e.getMessage());
             activeConnections.decrementAndGet();
         }
     }
     
     private static void registerShutdownHook() {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            System.out.println("Shutting down server...");
+            logger.info("Shutting down server...");
             clientPool.shutdown();
             try {
                 if (!clientPool.awaitTermination(5, TimeUnit.SECONDS)) {
@@ -84,7 +88,7 @@ public class Server {
             } catch (InterruptedException e) {
                 clientPool.shutdownNow();
             }
-            System.out.println("Server shutdown complete");
+            logger.info("Server shutdown complete");
         }));
     }
 }
