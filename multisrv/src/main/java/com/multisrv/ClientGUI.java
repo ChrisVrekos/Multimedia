@@ -362,54 +362,107 @@ public class ClientGUI extends Application {
                     // Create a temporary SDP file
                     File tempSdpFile = File.createTempFile("rtp_stream_", ".sdp");
                     tempSdpFile.deleteOnExit();
-                    
+
                     try (FileWriter writer = new FileWriter(tempSdpFile)) {
                         writer.write(sdpContent);
                     }
-                    
+
                     showMessage("Using SDP file: " + tempSdpFile.getAbsolutePath());
                     command.add("-protocol_whitelist");
                     command.add("file,rtp,udp");
-                    
+
                     // Make sure stats output is visible
                     command.add("-stats");
-                    
+
                     command.add("-i");
                     command.add(tempSdpFile.getAbsolutePath());
-                    
+
                     // Add -autoexit but we'll also use our custom monitor
                     command.add("-autoexit");
-                    
+
                     // Show exact command being run
                     String cmdStr = String.join(" ", command);
                     showMessage("Running: " + cmdStr);
-                    
+
                     ProcessBuilder pb = new ProcessBuilder(command);
                     pb.redirectErrorStream(true);
                     Process playerProcess = pb.start();
                     currentProcess.set(playerProcess);
-                    
+
                     // Launch the empty frame monitor
-                    monitorEmptyFrames(playerProcess, 50); // 50 empty frames threshold
-                    
+                    monitorEmptyFramesAndOutput(playerProcess, 50); // 50 empty frames threshold
+
                     // Continue monitoring output as usual
-                    try (BufferedReader reader = new BufferedReader(
-                            new InputStreamReader(playerProcess.getInputStream()))) {
-                        String line;
-                        while ((line = reader.readLine()) != null) {
-                            final String output = line;
-                            Platform.runLater(() -> messageArea.appendText(output + "\n"));
-                        }
-                    }
-                    
+                    // try (BufferedReader reader = new BufferedReader(
+                    //         new InputStreamReader(playerProcess.getInputStream()))) {
+                    //     String line;
+                    //     while ((line = reader.readLine()) != null) {
+                    //         final String output = line;
+                    //         Platform.runLater(() -> messageArea.appendText(output + "\n"));
+                    //     }
+                    // }
                 } else {
-                    // Rest of code for other protocols
-                    // ...
+                    switch (protocol.toUpperCase()) {
+                        case "UDP":
+                            // Use flags that ffplay actually supports
+                            command.add("-fflags");
+                            command.add("discardcorrupt+flush_packets"); // Keep discardcorrupt, add flush_packets
+                            
+                            // These proper options help detect when stream ends
+                            command.add("-stats");
+                            
+                            // Keep good analysis parameters
+                            command.add("-probesize");
+                            command.add("32768");
+                            command.add("-analyzeduration");
+                            command.add("2000000");
+                            
+                            // Better UDP URL with timeout params that ffplay supports
+                            command.add("-i");
+                            command.add("udp://127.0.0.1:" + port + "?timeout=1000000&fifo_size=5000000");
+                            break;
+                        case "TCP":
+                            command.add("-i");
+                            command.add("tcp://127.0.0.1:" + port);
+                            break;
+                        case "HLS":
+                            command.add("-i");
+                            command.add("http://127.0.0.1:" + port + "/master.m3u8");
+                            break;
+                        default:
+                            showMessage("Unsupported protocol: " + protocol);
+                            return;
+                    }
                 }
                 
+                command.add("-autoexit");
+                
+                // Show exact command being run
+                String cmdStr = String.join(" ", command);
+                showMessage("Running: " + cmdStr);
+                
+                ProcessBuilder pb = new ProcessBuilder(command);
+                System.out.println(command);
+                pb.redirectErrorStream(true);
+                Process playerProcess = pb.start();
+                currentProcess.set(playerProcess);
+                
+                // Monitor the process output
+                try (BufferedReader reader = new BufferedReader(
+                        new InputStreamReader(playerProcess.getInputStream()))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        final String output = line;
+                        Platform.runLater(() -> messageArea.appendText(output + "\n"));
+                    }
+                }
+                
+                int exitCode = playerProcess.waitFor();
+                showMessage("Playback ended with code: " + exitCode);
+                
             } catch (Exception e) {
-                // Exception handling
-                // ...
+                showMessage("Error: " + e.toString() + " - " + e.getMessage());
+                e.printStackTrace();
             } finally {
                 Platform.runLater(() -> playButton.setDisable(false));
             }
@@ -417,11 +470,9 @@ public class ClientGUI extends Application {
     }
 
     /**
-     * Monitors a process output for consecutive empty frames and terminates the process when threshold is reached.
-     * @param process The ffplay process to monitor
-     * @param emptyFrameThreshold Number of consecutive empty frames before termination
+     * Combined method to monitor empty frames and display output
      */
-    private void monitorEmptyFrames(Process process, int emptyFrameThreshold) {
+    private void monitorEmptyFramesAndOutput(Process process, int emptyFrameThreshold) {
         new Thread(() -> {
             try {
                 int emptyFrameCount = 0;
@@ -430,15 +481,19 @@ public class ClientGUI extends Application {
                 
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    // Check if this line indicates an empty frame (no video data)
+                    // Display the line in UI
+                    final String output = line;
+                    Platform.runLater(() -> messageArea.appendText(output + "\n"));
+                    
+                    // Check for empty frame
                     if (line.contains("vq=    0KB")) {
                         emptyFrameCount++;
                         
-                        // If we reach our threshold, terminate the process
                         if (emptyFrameCount >= emptyFrameThreshold) {
                             showMessage("Detected " + emptyFrameThreshold + 
                                        " consecutive empty frames - closing player");
                             process.destroy();
+                            // Stop reading after closing the process
                             break;
                         }
                     } else {
@@ -451,7 +506,7 @@ public class ClientGUI extends Application {
             }
         }).start();
     }
-    
+
     private void showMessage(String message) {
         Platform.runLater(() -> {
             messageArea.appendText(message + "\n");
