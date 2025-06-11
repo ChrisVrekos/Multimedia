@@ -60,7 +60,6 @@ public class ClientHandler implements Runnable {
     }
     
     private String processCommand(String command) {
-        // Here you can add proper command handling
         if (command.startsWith("LIST")) {
             return videoManager.getVideoList();
         } else if (command.startsWith("GET ")) {
@@ -70,7 +69,7 @@ public class ClientHandler implements Runnable {
             // Parse video name and protocol
             String requestParams = command.substring(5).trim();
             String videoName;
-            String protocol = "UDP"; // Default protocol
+            String protocol = "UDP"; 
             
             // Check if protocol is specified
             if (requestParams.contains("PROTOCOL=")) {
