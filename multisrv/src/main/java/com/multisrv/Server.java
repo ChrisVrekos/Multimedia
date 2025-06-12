@@ -10,22 +10,35 @@ import org.slf4j.LoggerFactory;
 
 
 public class Server {
-    private static final int DEFAULT_PORT = 5058;
     private static final int MAX_CONNECTIONS = 100;
     private static final ExecutorService clientPool = Executors.newCachedThreadPool();
     private static final AtomicInteger activeConnections = new AtomicInteger(0);
     private static final VideoManager videoManager = new VideoManager();
     private static final Logger logger = LoggerFactory.getLogger(Server.class);
+    private static final String DEFAULT_SERVER_ID   = "1";
+    private static final String DEFAULT_SERVER_PORT = "5058";
+    private static final String DEFAULT_VIDEO_PATH  = "./multisrv/src/main/java/com/multisrv/videos";
+    private static final String DEFAULT_FFMPEG_PATH = "/usr/bin";
+    public static final String SERVER_ID   =
+            System.getenv().getOrDefault("SERVER_ID", DEFAULT_SERVER_ID);
 
-    
+        public static final int SERVER_PORT   =
+            Integer.parseInt(System.getenv().getOrDefault("SERVER_PORT", DEFAULT_SERVER_PORT));
+
+        public static final String VIDEO_PATH =
+            System.getenv().getOrDefault("VIDEO_PATH", DEFAULT_VIDEO_PATH);
+
+        public static final String FFMPEG_PATH =
+            System.getenv().getOrDefault("FFMPEG_PATH", DEFAULT_FFMPEG_PATH);
+
     public static void main(String[] args) {
-        int port = args.length > 0 ? Integer.parseInt(args[0]) : DEFAULT_PORT;
         
-        // Register shutdown hook
+        int port = SERVER_PORT;
+                // Register shutdown hook
         registerShutdownHook();
         
         try (ServerSocket serverSocket = new ServerSocket(port)) {
-            logger.info("Server running on port " + port);
+            logger.info("Server "+ SERVER_ID + " running on port " + port);
             
             // Initialize video manager
             videoManager.initialize();

@@ -21,7 +21,7 @@
 
 === Streaming Server
 
-    O streaming server υλοποιηθηκε ωστε να μπορει να υποστηρίζει πολλους clients ταυτοχρονα και να ειναι multithreaded. Ο server ειναι υπευθυνος για την διαχειριση των βιντεο και την μετατροπη τους σε διαφορετικες αναλυσεις και φορμες μεσω του FFmpeg. Επικοινωνει με τον client μεσω Java Sockets και εχει τις εξης κλασεις:    
+O streaming server υλοποιηθηκε ωστε να μπορει να υποστηρίζει πολλους clients ταυτοχρονα και να ειναι multithreaded. Ο server ειναι υπευθυνος για την διαχειριση των βιντεο και την μετατροπη τους σε διαφορετικες αναλυσεις και φορμες μεσω του FFmpeg. Επικοινωνει με τον client μεσω Java Sockets και εχει τις εξης κλασεις:    
 
 ==== Server.class
 Υλοποιεί την κλάση του server, διαχειρίζεται τις συνδέσεις και τις ροές δεδομένων (input/output streams).
@@ -63,10 +63,127 @@
 ==== VideoManager.class 
 Υλοποιεί την κλάση που διαχειρίζεται τα βίντεο, τις μετατροπές και τις ροές.
        
-Η κλαση αυτη ειναι υπευθυνη για την διαχείριση των βίντεο και την μετατροπή τους σε διαφορετικές αναλύσεις και formats μεσω του FFmpeg (μελλοντικα θα πρεπει να δημιουργει και HLS playlists). Η κλάση VideoManager επισης βοηθεια με getters ωστε να μπορουμε να εχουμε πληροφορίες για τα βίντεο που εχουμε δημιουργησει. Τα οποια χρησιμοποιουνται απο την κλάση ClientHandler για να παρουσιασουν την λιστα με τα διαθεσιμα βιντεο στον client. Η κλάση VideoManager εχει και συναρτησεις  που ειναι υπευθυνες για την διαχειριση των File Lock και την αποφυγή ταυτόχρονων προσβάσεων στα βίντεο. Αυτη υλοποιηθηκαν ωστε να υπαρχει δυνατοτητα εκτελεσεις πολλαπλων instances του server, οι οποιοι κανουν Load balance μεταξυ τους.
+Η κλαση αυτη ειναι υπευθυνη για την διαχείριση των βίντεο και την μετατροπή τους σε διαφορετικές αναλύσεις και formats μεσω του FFmpeg. Η κλάση VideoManager επισης βοηθεια με getters ωστε να μπορουμε να εχουμε πληροφορίες για τα βίντεο που εχουμε δημιουργησει. Τα οποια χρησιμοποιουνται απο την κλάση ClientHandler για να παρουσιασουν την λιστα με τα διαθεσιμα βιντεο στον client. Η κλάση VideoManager εχει και συναρτησεις  που ειναι υπευθυνες για την διαχειριση των File Lock και την αποφυγή ταυτόχρονων προσβάσεων στα βίντεο. Αυτη υλοποιηθηκαν ωστε να υπαρχει δυνατοτητα εκτελεσεις πολλαπλων instances του server, οι οποιοι κανουν Load balance μεταξυ τους.
        
-Ετσι οταν ενας server θελει να μετατρεψει ενα βιντεο σε μια συγκεκριμένη αναλυση και φορμα, καλεί την συναρτηση acquireLock και αν το lock εχει αποκτηθεί, τοτε προχωραει στην μετατροπή του βίντεο. Αν το lock δεν εχει αποκτηθεί, τοτε η συναρτηση επιστρέφει false και ο server δεν προχωραει στην μετατροπή του βίντεο. Ετσι αποφεύγουμε ταυτόχρονες προσβάσεις στα βίντεο και διασφαλιζουμε την ακεραιοτητα τους.
-       
+Ετσι οταν ενας server θελει να μετατρεψει ενα βιντεο σε μια συγκεκριμένη αναλυση και φορματ, καλεί την συναρτηση acquireLock και αν το lock εχει αποκτηθεί, τοτε προχωραει στην μετατροπή του βίντεο. Αν το lock δεν εχει αποκτηθεί, τοτε η συναρτηση επιστρέφει false και ο server δεν προχωραει στην μετατροπή του βίντεο. Ετσι αποφεύγουμε ταυτόχρονες προσβάσεις στα βίντεο και διασφαλιζουμε την ακεραιοτητα τους. Παρακατω υπαχει ενα παραδειγμα απο δοκιμη που εγινε με docker ωστε να τρεξουμε παραλληλα 2 instances του servrer και να δουμε οτι δεν υπαρχει προβλημα με τα File Lock και για τις αναγκεσ load balancing της εφαρμογης:
+[source,console]
+----
+multimedia-server-1-1  | ANALYZING MISSING FORMATS THAT COULD BE CREATED WITH FFMPEG:
+multimedia-server-1-1  | 23:32:37.248 [main] INFO  com.multisrv.VideoManager -   Missing: input_fish-144p.avi
+multimedia-server-1-1  | 23:32:37.251 [main] INFO  com.multisrv.VideoManager - Converting: input_fish-1080p.mp4 -> input_fish-144p.avi
+multimedia-server-2-1  | 23:32:37.253 [main] INFO  com.multisrv.Server - Server 2 running on port 5059
+multimedia-server-2-1  | ANALYZING MISSING FORMATS THAT COULD BE CREATED WITH FFMPEG:
+multimedia-server-2-1  | 23:32:37.268 [main] INFO  com.multisrv.VideoManager -   Missing: input_fish-144p.avi
+multimedia-server-2-1  | 23:32:37.269 [main] INFO  com.multisrv.VideoManager - Conversion already in progress by another instance: input_fish-144p.avi    
+----
+
+Εκτος απο την διχειρειση των lock files η κλαση VideoManager θεωρειται το βασικο backend τις streaming εφαμογης μας στο Server side. Αρχικα φορτώνει τα βίντεο απο τον καταλογο που του δινουμε και τα αποθηκευει σε μια λιστα.
+[source,java]
+----
+videoQualities.computeIfAbsent(baseName, k -> ConcurrentHashMap.newKeySet()).add(quality);
+videoFormats.computeIfAbsent(baseName, k -> ConcurrentHashMap.newKeySet()).add(format);
+----
+Εδω γινεται χρηση των ConcurrentHashMap ετσι ωστε να μπορουμε να εχουμε ταυτόχρονες προσβάσεις απο πολλα instaces χωρις να υπαρχει race condition.  
+Επειτα κανει ελεγχω για ποιος συνδιασμος απο τα προτοκολλα και αναλυσης που υποστηριζει η εφαρμογη μας δεν υπαρχουν στην λιστα αλλα μονο για αναλυσησεις μικροτερεσ τησ αρχικησ που βρεθηκε.
+[source,java]
+----
+public void analyzeMissingFormats() {
+....
+String highestQuality = findHighestQuality(videoQualities.get(videoName));
+....
+}
+private String findHighestQuality(Set<String> qualities) {
+        int highestIndex = -1;
+        String highestQuality = null;
+        for (String quality : qualities) {
+            int index = supportedQualities.indexOf(quality);
+            if (index > highestIndex) {
+                highestIndex = index;
+                highestQuality = quality;
+            }
+        }
+        return highestQuality;
+    }
+----
+
+Επειτα εχουμε ενα αποσπασμα της διαδικασιας δημιουργιας των βιντεο που λειποουν. Καποια μερη των σηναρτησεων παραληπονται για ευαναγνωσία.:
+[source,java]
+----
+public void analyzeMissingFormats() {
+....
+  for (int i = 0; i <= highestQualityIndex; i++) {
+                String quality = supportedQualities.get(i);
+                for (String format : supportedFormats) {
+                    if (!videoExists(videoName, quality, format)) {
+                        logger.info("  Missing: {}-{}.{}", videoName, quality, format);
+                        generateVideoFormat(videoName, quality, format, highestQuality);
+                        ....
+                    }
+public void generateVideoFormat(String videoName, String targetQuality, String targetFormat, String sourceQuality) {
+        if (videoExists(videoName, targetQuality, targetFormat)) {
+        ....
+        if (!acquireLock(videoName, targetQuality, targetFormat)) {
+        ....
+        try {
+            File videoDir = getVideoDirectory();
+            String sourceFormat = findBestSourceFormat(videoName, sourceQuality);
+            
+            if (sourceFormat == null) {
+                logger.error("No suitable source format found for {}", videoName);
+                return;
+            }
+            
+            File sourceFile = new File(videoDir, videoName + "-" + sourceQuality + "." + sourceFormat);
+            File targetFile = new File(videoDir, videoName + "-" + targetQuality + "." + targetFormat);
+            
+            logger.info("Converting: {} -> {}", sourceFile.getName(), targetFile.getName());
+            transcodeFFMPEG(sourceFile, targetFile, targetQuality);
+            
+            if (targetFile.exists()) {
+                logger.info("Conversion successful: {}", targetFile.getName());
+                parseVideoFile(targetFile.getName());
+            }
+----
+Τελος η transcodeFFMPEG ειναι η συναρτηση που καλει το FFmpeg μεσω του Jaffree για να κανει την μετατροπη του βίντεο. Καποια μερη της περιλαβανονται στο παρακατω αποσπασμα οπως η μεταφορα του πινακα με τις αναλογιες bitrate και αναλυσεις που μας δοθηκε στην εκφωνηση σε κωδικα: 
+[source,java]
+----
+private void transcodeFFMPEG(File sourceFile, File targetFile, String targetQuality) {
+        try {
+            String targetFormat = targetFile.getName().substring(targetFile.getName().lastIndexOf('.') + 1);
+            int targetHeight = Integer.parseInt(targetQuality.replace("p", ""));
+            
+            // Determine bitrate based on quality
+            String bitrate;
+            switch (targetQuality) {
+                case "1080p": bitrate = "5000k"; break;
+                case "720p": bitrate = "2500k"; break;
+                case "480p": bitrate = "1500k"; break;
+                case "360p": bitrate = "1000k"; break;
+                case "240p": bitrate = "700k"; break;
+                case "144p": bitrate = "400k"; break;
+                default: bitrate = "1000k";
+            }
+----
+Παρακατω βρισκεται και ο κωδικας για την δημιουργεια του FFmpeg command που θα εκτελεστεί για την μετατροπή του βίντεο:
+[source,java]
+----
+            // Log the FFmpeg command to be executed
+            logger.info("FFmpeg command: ffmpeg -i {} -vf scale=-2:{} -c:v libx264 -b:v {} -preset medium {}", 
+                        sourceFile.getAbsolutePath(), targetHeight, bitrate, targetFile.getAbsolutePath());
+            
+            // Build the FFmpeg command
+            FFmpeg ffmpeg = FFmpeg.atPath()
+            .addInput(UrlInput.fromPath(sourceFile.toPath()))
+            .setFilter(StreamType.VIDEO, "scale=-2:" + targetHeight)
+            .addArguments("-c:v", "libx264")
+            .addArguments("-b:v", bitrate)
+            .addArguments("-preset", "medium")
+            .setOverwriteOutput(true);
+            
+            UrlOutput output = UrlOutput.toPath(targetFile.toPath());
+            output.addArguments("-c:a", "aac");
+            ffmpeg.addOutput(output);
+----
 
 === Streaming Client
 

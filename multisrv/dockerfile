@@ -1,0 +1,17 @@
+FROM openjdk:11-jre-slim
+
+# install ffmpeg so that /usr/bin/ffmpeg exists in‐image
+RUN apt-get update \
+ && apt-get install -y ffmpeg \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# copy in your already-built JAR (make sure you've run `mvn clean package`)
+COPY /target/multisrv-1.0-SNAPSHOT.jar app.jar
+
+# prepare the mount point for your videos bind-mount
+RUN mkdir -p /videos
+VOLUME /videos
+
+ENTRYPOINT ["java", "-jar", "app.jar"]

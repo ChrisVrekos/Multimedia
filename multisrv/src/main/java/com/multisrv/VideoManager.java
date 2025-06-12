@@ -350,7 +350,7 @@ public class VideoManager {
      * Returns the video storage directory.
      */
     private File getVideoDirectory() {
-        String videoPath = System.getenv("VIDEO_STORAGE_PATH");
+        String videoPath = Server.VIDEO_PATH;
         if (videoPath == null) {
             // Default fallback path
             videoPath = "/home/chris/OneDrive/Documents/8o examino/Multimedia/multisrv/src/main/java/com/multisrv/videos";
@@ -648,20 +648,15 @@ public class VideoManager {
             
             // Build the FFmpeg command
             FFmpeg ffmpeg = FFmpeg.atPath()
-                    .addInput(UrlInput.fromPath(sourceFile.toPath()))
-                    .setFilter(StreamType.VIDEO, "scale=-2:" + targetHeight)
-                    .addArguments("-c:v", "libx264")
-                    .addArguments("-b:v", bitrate)
-                    .addArguments("-preset", "medium")
-                    .setOverwriteOutput(true);
+            .addInput(UrlInput.fromPath(sourceFile.toPath()))
+            .setFilter(StreamType.VIDEO, "scale=-2:" + targetHeight)
+            .addArguments("-c:v", "libx264")
+            .addArguments("-b:v", bitrate)
+            .addArguments("-preset", "medium")
+            .setOverwriteOutput(true);
             
-            // Configure output settings
             UrlOutput output = UrlOutput.toPath(targetFile.toPath());
-            if (targetFormat.equalsIgnoreCase("mp4") || 
-                targetFormat.equalsIgnoreCase("mkv") || 
-                targetFormat.equalsIgnoreCase("avi")) {
-                output.addArguments("-c:a", "aac");
-            }
+            output.addArguments("-c:a", "aac");
             ffmpeg.addOutput(output);
             
             // Set a progress listener to show conversion progress
@@ -1050,39 +1045,6 @@ public class VideoManager {
             logger.error("SDP file not created after {} attempts: {}", maxAttempts, sdpFile.getAbsolutePath());
             throw new IOException("Failed to create SDP file for RTP stream");
         }
-    }
-
-    /**
-     * Start a streaming process and keep track of it
-     */
-    private Process runStreamProcess(List<String> command) throws IOException {
-        ProcessBuilder pb = new ProcessBuilder(command);
-        pb.redirectErrorStream(true);
-        Process process = pb.start();
-        
-        // Handle the process output in a separate thread
-        new Thread(() -> {
-            try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(process.getInputStream()))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    if (line.contains("error") || line.contains("Error")) {
-                        logger.error("FFmpeg: {}", line);
-                    } else if (line.contains("frame=") || line.contains("speed=")) {
-                        // Log less frequent progress updates
-                        if (Math.random() < 0.1) {
-                            logger.debug("FFmpeg: {}", line);
-                        }
-                    } else {
-                        logger.debug("FFmpeg: {}", line);
-                    }
-                }
-            } catch (IOException e) {
-                logger.error("Error reading FFmpeg output: {}", e.getMessage());
-            }
-        }).start();
-        
-        return process;
     }
 
     /**

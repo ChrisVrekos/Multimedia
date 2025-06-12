@@ -29,5 +29,5 @@
   <!-- Set specific loggers to debug level -->
   <logger name="com.multisrv.VideoManager" level="debug" />
   <logger name="com.multisrv.Server" level="debug" />
-
+  <logger name="com.multisrv.ClientHandler" level="debug" />
 </configuration>

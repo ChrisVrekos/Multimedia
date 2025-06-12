@@ -185,10 +185,16 @@ public class ClientGUI extends Application {
     }
     
     private void connectToServer() {
+        String host = "localhost";
+        int primaryPort = 5060; // Nginx load balancer port
+        int fallbackPort = 5058; // Direct server port
+        
         try {
-            socket = new Socket("localhost", 5058);
+            showMessage("Attempting to connect to " + host + ":" + primaryPort + " (load balancer)...");
+            socket = new Socket(host, primaryPort);
             input = new DataInputStream(socket.getInputStream());
             output = new DataOutputStream(socket.getOutputStream());
+            showMessage("Connected to " + host + ":" + primaryPort);
             
             // Start server communication thread
             new Thread(this::listenForMessages).start();
@@ -196,7 +202,23 @@ public class ClientGUI extends Application {
             // Get initial video list
             sendCommand("LIST");
         } catch (IOException e) {
-            showMessage("Connection error: " + e.getMessage());
+            showMessage("Connection to " + host + ":" + primaryPort + " failed: " + e.getMessage());
+            showMessage("Attempting to connect to fallback " + host + ":" + fallbackPort + "...");
+            try {
+                socket = new Socket(host, fallbackPort);
+                input = new DataInputStream(socket.getInputStream());
+                output = new DataOutputStream(socket.getOutputStream());
+                showMessage("Connected to fallback " + host + ":" + fallbackPort);
+
+                // Start server communication thread
+                new Thread(this::listenForMessages).start();
+                
+                // Get initial video list
+                sendCommand("LIST");
+            } catch (IOException ex) {
+                showMessage("Connection to fallback " + host + ":" + fallbackPort + " also failed: " + ex.getMessage());
+                showMessage("Please ensure the server or load balancer is running.");
+            }
         }
     }
     

@@ -10,7 +10,7 @@ public class Client {
             InetAddress ip = InetAddress.getByName("localhost");  
 
             // Use port 5058 or from command-line args
-            int port = args.length > 0 ? Integer.parseInt(args[0]) : 5058;
+            int port = args.length > 0 ? Integer.parseInt(args[0]) : 5060;
             Socket s = new Socket(ip, port);  
 
             // Create both input and output streams

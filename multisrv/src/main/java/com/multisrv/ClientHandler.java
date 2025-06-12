@@ -2,6 +2,8 @@ package com.multisrv;
 
 import java.io.*;
 import java.net.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ClientHandler implements Runnable {
     private final Socket socket;
@@ -9,6 +11,8 @@ public class ClientHandler implements Runnable {
     private final DataOutputStream output;
     private final VideoManager videoManager;
     private final Runnable disconnectCallback;
+    public static final Logger logger = LoggerFactory.getLogger(ClientHandler.class);
+
     
     public ClientHandler(Socket socket, DataInputStream input, DataOutputStream output, 
                          VideoManager videoManager, Runnable disconnectCallback) {
@@ -23,13 +27,13 @@ public class ClientHandler implements Runnable {
     public void run() {
         try {
             // Send welcome message
-            output.writeUTF("Welcome to the Multimedia Server");
+            output.writeUTF("Welcome to the Multimedia Server running on Server instance " + Server.SERVER_ID);
             
             // Process client requests
             processClientRequests();
             
         } catch (IOException e) {
-            System.err.println("Error in client handler: " + e.getMessage());
+            ClientHandler.logger.error("Error in client handler: " + e.getMessage());
         } finally {
             closeResources();
             disconnectCallback.run();
@@ -41,10 +45,10 @@ public class ClientHandler implements Runnable {
         while (true) {
             try {
                 message = input.readUTF();
-                System.out.println("From client: " + message);
+                ClientHandler.logger.info("From client: " + message);
                 
                 if (message.equalsIgnoreCase("Bye")) {
-                    System.out.println("Client " + socket + " sends exit...");
+                    ClientHandler.logger.info("Client " + socket + " sends exit...");
                     break;
                 }
                 
@@ -53,7 +57,7 @@ public class ClientHandler implements Runnable {
                 output.writeUTF(response);
                 
             } catch (SocketException | EOFException e) {
-                System.out.println("Client " + socket + " disconnected abruptly");
+                ClientHandler.logger.info("Client " + socket + " disconnected abruptly");
                 break;
             }
         }
@@ -84,7 +88,7 @@ public class ClientHandler implements Runnable {
                 videoName = requestParams;
             }
             
-            System.out.println("Requested video: " + videoName + " with protocol: " + protocol);
+            ClientHandler.logger.info("Requested video: " + videoName + " with protocol: " + protocol);
             return videoManager.playVideo(videoName, protocol);
         }
         
@@ -97,7 +101,7 @@ public class ClientHandler implements Runnable {
             if (output != null) output.close();
             if (socket != null) socket.close();
         } catch (IOException e) {
-            System.err.println("Error closing resources: " + e.getMessage());
+            ClientHandler.logger.error("Error closing resources: " + e.getMessage());
         }
     }
 }
