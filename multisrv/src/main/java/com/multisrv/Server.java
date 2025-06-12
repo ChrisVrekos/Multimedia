@@ -17,7 +17,7 @@ public class Server {
     private static final Logger logger = LoggerFactory.getLogger(Server.class);
     private static final String DEFAULT_SERVER_ID   = "1";
     private static final String DEFAULT_SERVER_PORT = "5058";
-    private static final String DEFAULT_VIDEO_PATH  = "./multisrv/src/main/java/com/multisrv/videos";
+    private static final String DEFAULT_VIDEO_PATH  = "/home/chris/OneDrive/Documents/8o examino/Multimedia/multisrv/src/main/java/com/multisrv/videos";
     private static final String DEFAULT_FFMPEG_PATH = "/usr/bin";
     public static final String SERVER_ID   =
             System.getenv().getOrDefault("SERVER_ID", DEFAULT_SERVER_ID);
@@ -38,7 +38,7 @@ public class Server {
         registerShutdownHook();
         
         try (ServerSocket serverSocket = new ServerSocket(port)) {
-            logger.info("Server "+ SERVER_ID + " running on port " + port);
+            logger.info("Server "+ SERVER_ID + " running on port " + port + VIDEO_PATH);
             
             // Initialize video manager
             videoManager.initialize();
