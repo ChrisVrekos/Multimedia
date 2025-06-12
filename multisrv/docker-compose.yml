@@ -11,6 +11,7 @@ services:
       - FFMPEG_PATH=/usr/bin
     volumes:
       - /home/chris/OneDrive/Documents/8o examino/Multimedia/multisrv/src/main/java/com/multisrv/videos:/videos
+      - ./logs:/app/logs
 
   multimedia-server-2:
     build: .
@@ -22,6 +23,8 @@ services:
       - FFMPEG_PATH=/usr/bin
     volumes:
       - /home/chris/OneDrive/Documents/8o examino/Multimedia/multisrv/src/main/java/com/multisrv/videos:/videos
+      - ./logs:/app/logs
+
 
   load-balancer:
     image: nginx:alpine

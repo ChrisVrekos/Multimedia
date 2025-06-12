@@ -1,33 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
+  <!--
+    Use LOG_DIR if set; otherwise default to a local ./logs folder.
+    Inside Docker you’ll override LOG_DIR to /app/logs via env.
+  -->
+  <property name="LOG_DIR" value="${LOG_DIR:-logs}"/>
+  <property name="LOG_PATH" value="${LOG_PATH:-${LOG_DIR}/multisrv.log}"/>
+
   <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
     <encoder>
       <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
     </encoder>
   </appender>
-  
+
   <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-    <!-- Use absolute path -->
-    <file>/home/chris/OneDrive/Documents/8o examino/Multimedia/multisrv/logs/multisrv.log</file>
+    <file>${LOG_PATH}</file>
     <append>true</append>
     <immediateFlush>true</immediateFlush>
     <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-      <fileNamePattern>/home/chris/OneDrive/Documents/8o examino/Multimedia/multisrv/logs/multisrv.%d{yyyy-MM-dd}.log</fileNamePattern>
+      <fileNamePattern>${LOG_DIR}/multisrv.%d{yyyy-MM-dd}.log</fileNamePattern>
       <maxHistory>30</maxHistory>
     </rollingPolicy>
     <encoder>
       <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
     </encoder>
   </appender>
-  
-  <!-- Route all loggers to both console and file -->
+
   <root level="info">
-    <appender-ref ref="CONSOLE" />
-    <appender-ref ref="FILE" />
+    <appender-ref ref="CONSOLE"/>
+    <appender-ref ref="FILE"/>
   </root>
-  
-  <!-- Set specific loggers to debug level -->
-  <logger name="com.multisrv.VideoManager" level="debug" />
-  <logger name="com.multisrv.Server" level="debug" />
-  <logger name="com.multisrv.ClientHandler" level="debug" />
+
+  <logger name="com.multisrv.VideoManager"  level="debug"/>
+  <logger name="com.multisrv.Server"        level="debug"/>
+  <logger name="com.multisrv.ClientHandler" level="debug"/>
 </configuration>

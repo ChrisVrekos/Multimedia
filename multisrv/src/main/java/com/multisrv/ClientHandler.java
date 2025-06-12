@@ -11,7 +11,7 @@ public class ClientHandler implements Runnable {
     private final DataOutputStream output;
     private final VideoManager videoManager;
     private final Runnable disconnectCallback;
-    public static final Logger logger = LoggerFactory.getLogger(ClientHandler.class);
+    private static final Logger logger = LoggerFactory.getLogger(ClientHandler.class);
 
     
     public ClientHandler(Socket socket, DataInputStream input, DataOutputStream output, 
