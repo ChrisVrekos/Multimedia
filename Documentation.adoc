@@ -32,7 +32,7 @@ O streaming server υλοποιηθηκε ωστε να μπορει να υπο
 ----
     private static final String DEFAULT_SERVER_ID   = "1";
     private static final String DEFAULT_SERVER_PORT = "5058";
-    private static final String DEFAULT_VIDEO_PATH  = "/home/chris/OneDrive/Documents/8o examino/Multimedia/multisrv/src/main/java/com/multisrv/videos";
+    private static final String DEFAULT_VIDEO_PATH  = "/home/chris/OneDrive/Documents/8o examino/Multimedia/multisrv/videos";
     private static final String DEFAULT_FFMPEG_PATH = "/usr/bin";
     public static final String SERVER_ID   =
             System.getenv().getOrDefault("SERVER_ID", DEFAULT_SERVER_ID);
@@ -808,24 +808,129 @@ private void disconnect() {
     input.close();  output.close();  socket.close();
 }
 ----
+
 === *Παρουσίαση του τελικού υλοποιημένου συστήματος:*
 Το τελικό σύστημα αποτελείται από δύο κύρια μέρη: τον Server και τον Client. Ο Server εκτελειτε ειτε μεσω Docker για λειτουργεια τησ δυνατοτητας του load balancing,  ειτε ως executable απο το .jar αρχείο που δημιουργήθηκε. Ο Client είναι μια JavaFX εφαρμογή που επικοινωνεί με τον Server για την αναπαραγωγή βίντεο. Η οποια εκτελείται με το .jar αρχείο που δημιουργήθηκε.
 
 *Επισης η εφαρμογη παρεχει logging με χρηση της βιβλιοθήκης SLF4J για την καταγραφή σημαντικών γεγονότων και σφαλμάτων. Στον Client, το logging εμφανίζεται στο TextArea της διεπαφής χρήστη, ενώ στον Server καταγράφεται σε αρχεία log. Αυτο θεωρηθηκε η πιο ορθη λυση για την παρακολούθηση της λειτουργίας του συστήματος και την αποσφαλμάτωση. Για τον ιδιο λογο, δεν υλοποιήθηκε γραφικό περιβάλλον για τον Server, καθως θα εκανε δυσκολότερη την υλοποίηση Load Balancing και δεν προσφέρει διδακτικά οφέλη.*
 
+==== *Dockerfile*
+Παρακάτω παρατίθεται το Dockerfile που χρησιμοποιήθηκε για την δημιουργια του Server container:
+[source,dockerfile]
+----
+FROM openjdk:11-jre-slim
+
+RUN apt-get update \
+ && apt-get install -y ffmpeg \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# copy in your already-built JAR ( before running docker run `mvn clean package`)
+COPY /target/multisrv-1.0-SNAPSHOT.jar app.jar
+
+RUN mkdir -p /videos
+VOLUME /videos
+
+ENTRYPOINT ["java", "-jar", "app.jar"]
+----
+==== *docker compose*
+[source,yaml]
+----
+version: "3.8"
+
+services:
+  multimedia-server-1:
+    build: .
+    network_mode: host
+    environment:
+      - SERVER_ID=1
+      - SERVER_PORT=5058
+      - VIDEO_PATH=/videos
+      - FFMPEG_PATH=/usr/bin
+    volumes:
+      - /home/chris/OneDrive/Documents/8o examino/Multimedia/multisrv/videos:/videos
+      - ./logs:/app/logs
+
+  multimedia-server-2:
+    build: .
+    network_mode: host
+    environment:
+      - SERVER_ID=2
+      - SERVER_PORT=5059
+      - VIDEO_PATH=/videos
+      - FFMPEG_PATH=/usr/bin
+    volumes:
+      - /home/chris/OneDrive/Documents/8o examino/Multimedia/multisrv/videos:/videos
+      - ./logs:/app/logs
+
+
+  load-balancer:
+    image: nginx:alpine
+    network_mode: host
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - multimedia-server-1
+      - multimedia-server-2
+----
+
+==== *nginx config*
+[source,nginx]
+----
+events {
+    worker_connections 1024;
+}
+
+# use stream{} to proxy raw TCP
+stream {
+    upstream multimedia_servers {
+        server 127.0.0.1:5058;
+        server 127.0.0.1:5059;
+    }
+
+    server {
+        listen 5060;             
+        proxy_pass multimedia_servers;
+        # optional timeouts, logging, etc.
+    }
+}
+----   
+
+==== *Εκτέλεση του συστήματος:*
+Για να εκτελέσετε το σύστημα, ακολουθήστε τα παρακάτω βήματα:
+
+ * Πρωτα εκτελέστε την εντολή `mvn clean package` για να δημιουργήσετε το .jar αρχείο του Server.
+ * Στη συνέχεια, μπορείτε να εκτελέσετε το σύστημα με δύο τρόπους:
+ * Με docker: απλα εκτελέστε την εντολή `docker-compose up --build` στον κατάλογο που περιέχει το docker-compose.yml αρχείο. 
+ * Local: εκτελέστε την εντολή `java -jar target/multisrv-1.0-SNAPSHOT.jar` στον κατάλογο που περιέχει το .jar αρχείο του Server.
+ * Για τον Client, εκτελέστε την εντολή `mvn exec:java -Dexec.mainClass="com.multisrv.ClientGUI"`
+
+==== *Screenshots εκτελέσεων:*
+
+image::Screenshot_20250613_224306.png[]
+
+image::Screenshot_20250613_223040.png[]
+
+image::Screenshot_20250613_223239.png[]
+
+image::endvideoclient.png[]
+
+==== *Load balanced Screenshots:*
+
+image::Screenshot_20250613_223131.png[]
+
+image::LOADBALANCED.png[]
+
+image::Screenshot_20250613_223348.png[]
+
+image::Screenshot_20250613_223416.png[]
 
 
 
 
 
-
-
-
-
-
-
-=== *Παρουσίαση των προβλημάτων που αντιμετωπίσατε και πώς αυτά επιλύθηκαν (ή έμειναν ανοικτά):*
-
+=== *Παρουσίαση προβλημάτων που αντιμετωπίσαμε*
 ==== *Σερβιρισμα βίντεο σε πολλαπλους χρήστες:*
    - Αρχικά, υπήρχε πρόβλημα με την ταυτόχρονη εξυπηρέτηση πολλαπλών χρηστών. Εφοσων γινοταν χρηση στατικων πορτών για τα streams, δεν μπορούσαμε να εξυπηρετήσουμε πολλαπλά αιτήματα του ιδιου προτοκόλλου ταυτόχρονα. Με την υλοποίηση δυναμικών θυρών για τα streams, το πρόβλημα αυτό επιλύθηκε, επιτρέποντας σε πολλούς χρήστες να συνδέονται και να αναπαράγουν βίντεο ταυτόχρονα.
 
