@@ -353,7 +353,7 @@ public class VideoManager {
         String videoPath = Server.VIDEO_PATH;
         if (videoPath == null) {
             // Default fallback path
-            videoPath = "/home/chris/OneDrive/Documents/8o examino/Multimedia/multisrv/src/main/java/com/multisrv/videos";
+            videoPath = "/home/chris/OneDrive/Documents/8o examino/Multimedia/multisrv/videos";
         }
         
         File videoDir = new File(videoPath);

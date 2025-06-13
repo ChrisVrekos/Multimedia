@@ -10,7 +10,7 @@ services:
       - VIDEO_PATH=/videos
       - FFMPEG_PATH=/usr/bin
     volumes:
-      - /home/chris/OneDrive/Documents/8o examino/Multimedia/multisrv/src/main/java/com/multisrv/videos:/videos
+      - /home/chris/OneDrive/Documents/8o examino/Multimedia/multisrv/videos:/videos
       - ./logs:/app/logs
 
   multimedia-server-2:
@@ -22,7 +22,7 @@ services:
       - VIDEO_PATH=/videos
       - FFMPEG_PATH=/usr/bin
     volumes:
-      - /home/chris/OneDrive/Documents/8o examino/Multimedia/multisrv/src/main/java/com/multisrv/videos:/videos
+      - /home/chris/OneDrive/Documents/8o examino/Multimedia/multisrv/videos:/videos
       - ./logs:/app/logs
 
 

@@ -1,9 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
-  <!--
-    Use LOG_DIR if set; otherwise default to a local ./logs folder.
-    Inside Docker you’ll override LOG_DIR to /app/logs via env.
-  -->
   <property name="LOG_DIR" value="${LOG_DIR:-logs}"/>
   <property name="LOG_PATH" value="${LOG_PATH:-${LOG_DIR}/multisrv.log}"/>
 
