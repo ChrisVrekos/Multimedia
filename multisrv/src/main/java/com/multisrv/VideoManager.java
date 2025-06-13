@@ -25,7 +25,7 @@ import com.github.kokorin.jaffree.ffmpeg.*;
 import com.github.kokorin.jaffree.ffmpeg.UrlInput;
 import com.github.kokorin.jaffree.ffprobe.*;
 
-/**
+/*
  * VideoManager class manages video file indexing, format analysis, and transcoding using FFmpeg.
  */
 public class VideoManager {
@@ -359,7 +359,11 @@ public class VideoManager {
         File videoDir = new File(videoPath);
         
         if (!videoDir.exists()) {
-            videoDir.mkdirs();
+            // If the directory does not exist, throw an error and exit
+            String errorMsg = "Error in VideoManager.java: The path for the video folder is not correct. Please add a correct video folder path. (Line " + Thread.currentThread().getStackTrace()[1].getLineNumber() + ")";
+            logger.error(errorMsg);
+            System.err.println(errorMsg);
+            throw new IllegalStateException(errorMsg);
         }
         
         if (!videoDir.isDirectory()) {
